@@ -1,5 +1,5 @@
 {
-    "name": "ZitecCOM/ZitecExtension",
+    "name": "zitec/behat-extension",
     "description": "A collection of useful methods for functional testing with Behat",
     "keywords": ["behat","BDD", "test", "zitec"],
     "authors": [
