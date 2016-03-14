@@ -2,7 +2,7 @@
     "name": "zitec/behat-extension",
     "description": "A collection of useful methods for functional testing with Behat",
     "keywords": ["behat","BDD", "test", "zitec"],
-    "license":  "BSD"
+    "license":  "BSD",
     "authors": [
         {
             "name": "Marius BALTEANU",
