@@ -1,0 +1,38 @@
+{
+    "name": "ZitecCOM/ZitecExtension",
+    "description": "A collection of useful methods for functional testing with Behat",
+    "keywords": ["behat","BDD", "test", "zitec"],
+    "authors": [
+        {
+            "name": "Marius BALTEANU",
+            "email": "marius.balteanu@zitec.com"
+        },
+        {
+            "name": "Bianca VADEAN",
+            "email": "bianca.vadean@zitec.com"
+        }
+    ],
+    "require": {
+        "behat/behat": "3.0.15",
+        "behat/mink": "1.6.1",
+        "behat/mink-extension": "2.1.0",
+        "behat/mink-goutte-driver": "1.1.0",
+        "behat/mink-selenium2-driver": "1.2.0",
+        "peridot-php/webdriver-manager": "1.3.0",
+        "ciaranmcnulty/behat-stepthroughextension": "1.0.0",
+        "sensiolabs/behat-page-object-extension": "~2.0",
+        "phpunit/phpunit": "4.8.16",
+        "fzaninotto/faker": "1.5.0",
+        "ocramius/proxy-manager": "~1.0",
+        "nelmio/alice": "2.1.3"
+    },
+    "config": {
+        "bin-dir": "bin"
+    },
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-0": {
+            "Zitec\\ZitecExtension": "src/"
+        }
+    }
+}
