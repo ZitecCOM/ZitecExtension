@@ -36,6 +36,4 @@ class BaseContext extends PageObjectContext implements SnippetAcceptingContext
   {
     return $this->minkContext;
   }
-
-
 }
