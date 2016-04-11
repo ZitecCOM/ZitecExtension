@@ -13,7 +13,6 @@ use Behat\Behat\Context\SnippetAcceptingContext;
 use Behat\Behat\Hook\Scope\BeforeScenarioScope;
 use Zitec\ZitecExtension\Context\ZitecContext;
 
-require_once 'PHPUnit/Framework/Assert/Functions.php';
 
 class BaseContext extends PageObjectContext implements SnippetAcceptingContext
 {
@@ -37,6 +36,4 @@ class BaseContext extends PageObjectContext implements SnippetAcceptingContext
   {
     return $this->minkContext;
   }
-
-
 }
