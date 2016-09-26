@@ -6,16 +6,22 @@
 
 namespace Zitec\ZitecExtension\FileUpload;
 
+use Behat\Mink\Element\DocumentElement;
+use Behat\Mink\Element\NodeElement;
 use Zitec\ZitecExtension\Session;
 
 
 class UploadHelper
 {
+    const TEST_FILES_DIRECTORY = __DIR__ . DIRECTORY_SEPARATOR . 'Files';
     private static $helper;
     private $verifications;
     private $testType;
     private $hasCsrf;
     private $csrfTokenKey;
+    /**
+     * @var DocumentElement | NodeElement $csrfHtml
+     */
     private $csrfHtml;
     private $csrfToken;
     private $postParameters;
@@ -81,10 +87,10 @@ class UploadHelper
     }
 
     /**
-     * Set the HTML of the page where to find the CSRF token to use in the POST requests
-     * @param string $html
+     * Set the page or Mink Element specific where you will find the CSRF token
+     * @param $html
      */
-    public function setCsrfHtml($html)
+    public function setCsrfElement($html)
     {
         $this->csrfHtml = $html;
     }
@@ -94,13 +100,11 @@ class UploadHelper
      */
     public function findCsrfToken()
     {
-        //todo determine a way to get the CSRF token from the page
         //todo determine ways to circumvent CSRF protection that can be circumvented
-        $a = strpos($this->csrfHtml, $this->csrfTokenKey);
-        if($a == false) {
-            throw new \Exception("The CSRF key was not found on the page!");
+        $result = $this->csrfHtml->find('css', 'input[name="' . $this->csrfTokenKey . '"]')->getValue();
+        if ($result === null) {
+            throw new \Exception('No suitable value attribute was found to extract the CSRF token from!');
         }
-        $b = explode($this->csrfTokenKey, $this->csrfHtml);
         $this->csrfToken = $result;
     }
 
@@ -108,23 +112,98 @@ class UploadHelper
      * Set the browser session, post params and form endpoint URL to the helper
      * @param Session\Session $session Session of the current browser for the test
      * @param string $endpoint Form endpoint - where form sends its request
-     * @param string $fileUploadField Name of the form upload field 
+     * @param string $fileUploadField Name of the form upload field
      * @param array $params Other required form params for the POST request
      */
-    public function setSessionAndPostParams($session, $endpoint, $fileUploadField, $params = null) {
+    public function setSessionAndPostParams($session, $endpoint, $fileUploadField, $params = null)
+    {
         $this->session = $session;
         $this->formEndpoint = $endpoint;
         $this->postParameters = $params;
         $this->fileUploadFormField = $fileUploadField;
     }
 
-    protected function makePost()
+    /**
+     * Login through a POST request to a website.
+     * @param $postEndpoint
+     * @param $loginCredentials
+     */
+    public function postRequest($postEndpoint, $loginCredentials)
+    {
+        $this->makePost($postEndpoint, $loginCredentials);
+    }
+
+    /**
+     * Make a post to a given endpoint with a given set of parameters. If none are provided use the ones set on the object instead.
+     * @param string $formEndpoint
+     * @param array $postParams
+     * @param null $files
+     */
+    protected function makePost($formEndpoint = null, $postParams = null, $files = null)
     {
         /**
          * @var \Symfony\Component\BrowserKit\Client $client
          */
         $client = $this->session->getDriver()->getClient();
-        $client->request("POST", $this->formEndpoint, $this->postParameters);
+        if ($formEndpoint === null) {
+            $formEndpoint = $this->formEndpoint;
+        }
+        if ($postParams === null) {
+            $postParams = $this->postParameters;
+        }
+        if(empty($files)) {
+            $files = array();
+            $server = array();
+        } else {
+            $server = array("Content-Type" => "multipart/form-data; boundary=----WebKitFormBoundaryMKT3mlnB0oAB1cH1");
+        }
+        $client->request("POST", $formEndpoint, $postParams, $files, $server);
+    }
+
+    /**
+     * Test the file upload
+     */
+    public function testFileUpload()
+    {
+        $testFilesArray = $this->getTestFiles(self::TEST_FILES_DIRECTORY);
+        switch (strtolower($this->testType)) {
+            case 'post':
+                foreach ($testFilesArray as $key => $value) {
+                    if (is_array($value)) {
+                        foreach ($value as $key1 => $testTypeDir) {
+                            if ($key1 === 'valid' && is_array($testTypeDir)) {
+                                foreach ($testTypeDir as $key2 => $file) {
+                                    if ($this->hasCsrf) {
+                                        $this->postParameters[$this->csrfTokenKey] = $this->csrfToken;
+                                    }
+                                    $fullPathToFile = self::TEST_FILES_DIRECTORY . DIRECTORY_SEPARATOR . $key . DIRECTORY_SEPARATOR . $key1 . DIRECTORY_SEPARATOR . $file;
+                                    $this->postParameters[$this->fileUploadFormField] = $file;
+                                    $this->makePost(null, null, array($fullPathToFile));
+                                }
+                            }
+                        }
+                    }
+                }
+        }
+    }
+
+    /**
+     * Get all the test files from the directory recursively
+     * @param $dir
+     * @return array|null
+     */
+    protected function getTestFiles($dir)
+    {
+        $result = null;
+        $filesInDir = array_diff(scandir($dir), array('..', '.'));
+        foreach ($filesInDir as $key => $value) {
+            if (is_dir($dir . DIRECTORY_SEPARATOR . $value)) {
+                $result[$value] = $this->getTestFiles($dir . DIRECTORY_SEPARATOR . $value);
+            } else {
+                $result[] = $value;
+            }
+        }
+        return $result;
     }
 
 }

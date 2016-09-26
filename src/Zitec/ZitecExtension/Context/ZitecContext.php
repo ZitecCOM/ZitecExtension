@@ -489,6 +489,7 @@ class ZitecContext extends MinkContext implements MinkAwareContext
     }
 
     /**
+     * The keys from the table node must be the same like the ones in the $fileUploadTestSetup array
      * @Then /^(?:|I )setup the file uploading test with the following components:$/
      */
     public function iSetupTheFileUploadTest(TableNode $tableNode)
@@ -529,6 +530,7 @@ class ZitecContext extends MinkContext implements MinkAwareContext
     }
 
     /**
+     * The key provided must be the name attribute of the field that contains the CSRF token
      * @Then /^(?:|I )process the page to find the CSRF token$/
      * @Then /^(?:|I )process the page to find the CSRF token with the key "([^"]*)"$/
      */
@@ -540,7 +542,8 @@ class ZitecContext extends MinkContext implements MinkAwareContext
         if ($csrfTokenKey !== null) {
             $this->fileUploadHelper->setCsrfTokenKey($csrfTokenKey);
         }
-        $this->fileUploadHelper->setCsrfHtml($this->getSession()->getPage()->getHtml());
+        $a = $this->getSession()->getPage()->getHtml();
+        $this->fileUploadHelper->setCsrfElement($this->getSession()->getPage());
         $this->fileUploadHelper->findCsrfToken();
     }
 
@@ -589,21 +592,52 @@ class ZitecContext extends MinkContext implements MinkAwareContext
     {
         foreach ($tableNode->getTable() as $item => $value) {
             foreach ($value as $key => $cookieStuff) {
-                if($key % 2 == 0) {
-                    if($cookieStuff = "name") {
-                        $cookieName = $value[$key+1];
+                if ($key % 2 == 0) {
+                    if ($cookieStuff = "name") {
+                        $cookieName = $value[$key + 1];
                     }
-                    if($cookieStuff = "value") {
-                        $cookieValue = $value[$key+1];
+                    if ($cookieStuff = "value") {
+                        $cookieValue = $value[$key + 1];
                     }
-                    if($cookieStuff = "domain") {
-                        $domain = $value[$key+1];
+                    if ($cookieStuff = "domain") {
+                        $domain = $value[$key + 1];
                     }
                 }
             }
         }
         $cookie = new Cookie($cookieName, $cookieValue, null, null, $domain);
         $this->getSession()->getDriver()->getClient()->getCookieJar()->set($cookie);
+    }
+
+    /**
+     * Login to a website through POST. You need to provide the name attribute and value of the credential field
+     * @Then /^(?:|I )make a POST request to "([^"]*)" with:$/
+     */
+    public function iMakeAPostRequestToWith($endPoint, TableNode $tableNode)
+    {
+        $credentials = array();
+        foreach ($tableNode->getTable() as $item => $value) {
+            foreach ($value as $key => $credentialsStuff) {
+                if ($key % 2 == 0) {
+                    $credentials[$credentialsStuff] = $value[$key + 1];
+                }
+            }
+        }
+        if (!$this->fileUploadHelper instanceof UploadHelper) {
+            $this->fileUploadHelper = UploadHelper::getInstance();
+        }
+        $this->fileUploadHelper->postRequest($endPoint, $credentials);
+    }
+
+    /**
+     * @Then /^(?:|I )test the file upload for the given test parameters:$/
+     */
+    public function iTestTheFileUpload() 
+    {
+        if (!$this->fileUploadHelper instanceof UploadHelper) {
+            throw new \Exception("File upload helper not setup! Please setup all the required parameters in order to test the file upload!");
+        }
+        $this->fileUploadHelper->testFileUpload();
     }
 
 }
