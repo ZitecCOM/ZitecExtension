@@ -101,7 +101,12 @@ class UploadHelper
     public function findCsrfToken()
     {
         //todo determine ways to circumvent CSRF protection that can be circumvented
-        $result = $this->csrfHtml->find('css', 'input[name="' . $this->csrfTokenKey . '"]')->getValue();
+        $csrfInput = $this->csrfHtml->find('css', 'input[name="' . $this->csrfTokenKey . '"]');
+        if(!empty($csrfInput)) {
+            $result = $csrfInput->getValue();
+        } else {
+            throw new \Exception("CSRF Input element not found on page! Check that you are on the correct page and that you indicated the correct input element name!");
+        }
         if ($result === null) {
             throw new \Exception('No suitable value attribute was found to extract the CSRF token from!');
         }
@@ -126,11 +131,14 @@ class UploadHelper
     /**
      * Login through a POST request to a website.
      * @param $postEndpoint
-     * @param $loginCredentials
+     * @param $postParams
      */
-    public function postRequest($postEndpoint, $loginCredentials)
+    public function postRequest($postEndpoint, $postParams)
     {
-        $this->makePost($postEndpoint, $loginCredentials);
+        if(isset($this->csrfToken)) {
+            $postParams[$this->csrfTokenKey] = $this->csrfToken;
+        }
+        $this->makePost($postEndpoint, $postParams);
     }
 
     /**
@@ -153,9 +161,15 @@ class UploadHelper
         }
         if(empty($files)) {
             $files = array();
-            $server = array();
+            if(isset($postParams["multi"]) && $postParams["multi"] === "da") {
+                $server = array("Content-Type" => "multipart/form-data");
+                unset($postParams["multi"]);
+            } else {
+                $server = array();
+            }
+
         } else {
-            $server = array("Content-Type" => "multipart/form-data; boundary=----WebKitFormBoundaryMKT3mlnB0oAB1cH1");
+            $server = array("Content-Type" => "multipart/form-data");
         }
         $client->request("POST", $formEndpoint, $postParams, $files, $server);
     }
