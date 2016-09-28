@@ -102,7 +102,7 @@ class UploadHelper
     {
         //todo determine ways to circumvent CSRF protection that can be circumvented
         $csrfInput = $this->csrfHtml->find('css', 'input[name="' . $this->csrfTokenKey . '"]');
-        if(!empty($csrfInput)) {
+        if (!empty($csrfInput)) {
             $result = $csrfInput->getValue();
         } else {
             throw new \Exception("CSRF Input element not found on page! Check that you are on the correct page and that you indicated the correct input element name!");
@@ -135,9 +135,6 @@ class UploadHelper
      */
     public function postRequest($postEndpoint, $postParams)
     {
-        if(isset($this->csrfToken)) {
-            $postParams[$this->csrfTokenKey] = $this->csrfToken;
-        }
         $this->makePost($postEndpoint, $postParams);
     }
 
@@ -159,14 +156,9 @@ class UploadHelper
         if ($postParams === null) {
             $postParams = $this->postParameters;
         }
-        if(empty($files)) {
+        if (empty($files)) {
             $files = array();
-            if(isset($postParams["multi"]) && $postParams["multi"] === "da") {
-                $server = array("Content-Type" => "multipart/form-data");
-                unset($postParams["multi"]);
-            } else {
-                $server = array();
-            }
+            $server = array();
 
         } else {
             $server = array("Content-Type" => "multipart/form-data");
@@ -187,11 +179,8 @@ class UploadHelper
                         foreach ($value as $key1 => $testTypeDir) {
                             if ($key1 === 'valid' && is_array($testTypeDir)) {
                                 foreach ($testTypeDir as $key2 => $file) {
-                                    if ($this->hasCsrf) {
-                                        $this->postParameters[$this->csrfTokenKey] = $this->csrfToken;
-                                    }
                                     $fullPathToFile = self::TEST_FILES_DIRECTORY . DIRECTORY_SEPARATOR . $key . DIRECTORY_SEPARATOR . $key1 . DIRECTORY_SEPARATOR . $file;
-                                    $this->postParameters[$this->fileUploadFormField] = $file;
+                                    $this->updatePostParams($file);
                                     $this->makePost(null, null, array($fullPathToFile));
                                 }
                             }
@@ -218,6 +207,18 @@ class UploadHelper
             }
         }
         return $result;
+    }
+
+    /**
+     * Update the POST parameters
+     * @param string $file Filename for the test file
+     */
+    protected function updatePostParams($file)
+    {
+        if ($this->hasCsrf) {
+            $this->postParameters[$this->csrfTokenKey] = $this->csrfToken;
+        }
+        #$this->postParameters[$this->fileUploadFormField] = $file;
     }
 
 }
