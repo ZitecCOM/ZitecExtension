@@ -531,25 +531,39 @@ class ZitecContext extends MinkContext implements MinkAwareContext
 
     /**
      * The key provided must be the name attribute of the field that contains the CSRF token
-     * @Then /^(?:|I )process the page to find the CSRF token$/
      * @Then /^(?:|I )process the page to find the CSRF token with the key "([^"]*)"$/
      */
-    public function iProcessTheHtmlContentForFileUpload($csrfTokenKey = null)
+    public function iProcessTheHtmlContentForFileUpload($csrfTokenKey)
     {
         if (!$this->fileUploadHelper instanceof UploadHelper) {
             $this->fileUploadHelper = UploadHelper::getInstance();
         }
-        if ($csrfTokenKey !== null) {
-            $this->fileUploadHelper->setCsrfTokenKey($csrfTokenKey);
+        $this->fileUploadHelper->setCsrfTokenKey($csrfTokenKey);
+        $this->fileUploadHelper->setCsrfToken($this->findCsrfToken($csrfTokenKey));
+    }
+
+    /**
+     * Find the CSRF token for the form POST test to work
+     * @param string $csrfTokenKey Name of the input containing the CSRF token
+     * @return string
+     * @throws \Exception
+     */
+    protected function findCsrfToken($csrfTokenKey)
+    {
+        $csrfInput = $this->getSession()->getPage()->find('css', 'input[name="' . $csrfTokenKey . '"]');
+        if (!empty($csrfInput)) {
+            $result = $csrfInput->getValue();
+        } else {
+            throw new \Exception("CSRF Input element not found on page! Check that you are on the correct page and that you indicated the correct input element name!");
         }
-        $a = $this->getSession()->getPage()->getHtml();
-        $this->fileUploadHelper->setCsrfElement($this->getSession()->getPage());
-        $this->fileUploadHelper->findCsrfToken();
+        if ($result === null) {
+            throw new \Exception('No suitable value attribute was found to extract the CSRF token from!');
+        }
+        return $result;
     }
 
     /**
      * Two parameters are mandatory in the table node: endpoint and file_upload_field
-     *
      *
      * @Then /^(?:|I )prepare the post requests with the following parameters:$/
      */
@@ -572,9 +586,6 @@ class ZitecContext extends MinkContext implements MinkAwareContext
                     }
                 }
             }
-        }
-        if ($foundEndPoint == false) {
-            throw new \Exception("endpoint is a required parameter! Please revise the test data!");
         }
         if ($foundFileUploadField == false) {
             throw new \Exception("file_upload_field is a required parameter! Please revise the test data!");
@@ -630,14 +641,64 @@ class ZitecContext extends MinkContext implements MinkAwareContext
     }
 
     /**
+     * Send in a table node "success" and "failure" texts which are taken from the resulting page after the upload to verify if the action had the expected result
      * @Then /^(?:|I )test the file upload for the given test parameters:$/
      */
-    public function iTestTheFileUpload() 
+    public function iTestTheFileUpload(TableNode $tableNode)
     {
+        $successFound = null;
+        $failFound = null;
+        foreach ($tableNode->getTable() as $item => $value) {
+            foreach ($value as $key => $successFailure) {
+                if ($key % 2 == 0) {
+                    if($successFailure === "success") {
+                        $successFound = $value[$key+1];
+                    }
+                    if($successFailure === "failure") {
+                        $failFound = $value[$key+1];
+                    }
+                }
+            }
+        }
+        if(empty($successFound)) {
+            throw new \Exception("No success text to validate the result of the form upload!");
+        }
+        if(empty($failFound)) {
+            throw new \Exception("No failure text to validate the result of the form upload!");
+        }
         if (!$this->fileUploadHelper instanceof UploadHelper) {
             throw new \Exception("File upload helper not setup! Please setup all the required parameters in order to test the file upload!");
         }
-        $this->fileUploadHelper->testFileUpload();
+        foreach ($this->fileUploadHelper->testFileUpload() as $testTypeAndExt => $result) {
+            $breakDown = explode("_", $testTypeAndExt);
+            if(in_array($breakDown[0], $this->allowedFileUploadExtensions) && $breakDown[1] === "valid") {
+                if(strpos($result, $successFound) === false) {
+                    throw new \Exception("Success scenario for the following extension: '" . $breakDown[0] . "' has failed. Success text not found on resulting page");
+                }
+            } else {
+                if(strpos($result, $failFound) === false) {
+                    throw new \Exception("Failure scenario for the following extension: '" . $breakDown[0] . "' has failed. Failure text not found on resulting page");
+                }
+            }
+        }
+
+    }
+
+    /**
+     * @Then /^(?:|I )try to obtain the form action URL from the form with the ID or name "([^"]*)"$/
+     */
+    public function iGetEndpointFromFormByIdOrName($identifier)
+    {
+        if (!$this->fileUploadHelper instanceof UploadHelper) {
+            $this->fileUploadHelper = UploadHelper::getInstance();
+        }
+        if ($element = $this->getSession()->getPage()->find('css', "#$identifier")) {
+            $this->fileUploadHelper->setFormEndpoint($element->getAttribute("action"));
+        } else if ($element = $this->getSession()->getPage()->find('css', "form[name='$identifier']")) {
+            $this->fileUploadHelper->setFormEndpoint($element->getAttribute("action"));
+        } else {
+            throw new \Exception("Form with the specified identifier $identifier not found!");
+        }
     }
 
 }

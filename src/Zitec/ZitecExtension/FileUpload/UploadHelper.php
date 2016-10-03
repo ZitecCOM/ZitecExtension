@@ -6,23 +6,18 @@
 
 namespace Zitec\ZitecExtension\FileUpload;
 
-use Behat\Mink\Element\DocumentElement;
-use Behat\Mink\Element\NodeElement;
 use Zitec\ZitecExtension\Session;
 
 
 class UploadHelper
 {
     const TEST_FILES_DIRECTORY = __DIR__ . DIRECTORY_SEPARATOR . 'Files';
+    const FILE_MONITOR = TEST_FILES_PATH . DIRECTORY_SEPARATOR . "used_test_files";
     private static $helper;
     private $verifications;
     private $testType;
     private $hasCsrf;
     private $csrfTokenKey;
-    /**
-     * @var DocumentElement | NodeElement $csrfHtml
-     */
-    private $csrfHtml;
     private $csrfToken;
     private $postParameters;
     private $formEndpoint;
@@ -84,33 +79,16 @@ class UploadHelper
     public function setVerifications($verifications)
     {
         $this->verifications = $verifications;
+        $this->verifications[] = "valid";
     }
 
     /**
-     * Set the page or Mink Element specific where you will find the CSRF token
-     * @param $html
+     * Set the CSRF token value to use in the post
+     * @param string $token
      */
-    public function setCsrfElement($html)
+    public function setCsrfToken($token)
     {
-        $this->csrfHtml = $html;
-    }
-
-    /**
-     * Find the CSRF token in the given HTML
-     */
-    public function findCsrfToken()
-    {
-        //todo determine ways to circumvent CSRF protection that can be circumvented
-        $csrfInput = $this->csrfHtml->find('css', 'input[name="' . $this->csrfTokenKey . '"]');
-        if (!empty($csrfInput)) {
-            $result = $csrfInput->getValue();
-        } else {
-            throw new \Exception("CSRF Input element not found on page! Check that you are on the correct page and that you indicated the correct input element name!");
-        }
-        if ($result === null) {
-            throw new \Exception('No suitable value attribute was found to extract the CSRF token from!');
-        }
-        $this->csrfToken = $result;
+        $this->csrfToken = $token;
     }
 
     /**
@@ -123,9 +101,18 @@ class UploadHelper
     public function setSessionAndPostParams($session, $endpoint, $fileUploadField, $params = null)
     {
         $this->session = $session;
-        $this->formEndpoint = $endpoint;
+        $this->setFormEndpoint($endpoint);
         $this->postParameters = $params;
         $this->fileUploadFormField = $fileUploadField;
+    }
+
+    /**
+     * Set the form action endpoint
+     * @param string $endpoint
+     */
+    public function setFormEndpoint($endpoint)
+    {
+        $this->formEndpoint = $endpoint;
     }
 
     /**
@@ -143,6 +130,7 @@ class UploadHelper
      * @param string $formEndpoint
      * @param array $postParams
      * @param null $files
+     * @return string
      */
     protected function makePost($formEndpoint = null, $postParams = null, $files = null)
     {
@@ -158,36 +146,40 @@ class UploadHelper
         }
         if (empty($files)) {
             $files = array();
-            $server = array();
-
-        } else {
-            $server = array("Content-Type" => "multipart/form-data");
         }
-        $client->request("POST", $formEndpoint, $postParams, $files, $server);
+        $client->request("POST", $formEndpoint, $postParams, $files);
+        $response = $client->getInternalResponse()->getContent();
+        return $response;
     }
 
     /**
      * Test the file upload
+     * @return array|string
      */
     public function testFileUpload()
     {
+        //todo finish the test method implementation
         $testFilesArray = $this->getTestFiles(self::TEST_FILES_DIRECTORY);
         switch (strtolower($this->testType)) {
             case 'post':
                 foreach ($testFilesArray as $key => $value) {
                     if (is_array($value)) {
                         foreach ($value as $key1 => $testTypeDir) {
-                            if ($key1 === 'valid' && is_array($testTypeDir)) {
+                            if ((!empty($this->verifications) && in_array($key1, $this->verifications) && is_array($testTypeDir)) || (is_array($testTypeDir) && empty($this->verifications))) {
                                 foreach ($testTypeDir as $key2 => $file) {
                                     $fullPathToFile = self::TEST_FILES_DIRECTORY . DIRECTORY_SEPARATOR . $key . DIRECTORY_SEPARATOR . $key1 . DIRECTORY_SEPARATOR . $file;
                                     $this->updatePostParams($file);
-                                    $this->makePost(null, null, array($fullPathToFile));
+                                    $result[$key . "_" . $key1] = $this->makePost(null, null, array($fullPathToFile));
                                 }
                             }
                         }
                     }
                 }
+            break;
+            case 'browser':
+
         }
+        return $result;
     }
 
     /**
@@ -218,7 +210,7 @@ class UploadHelper
         if ($this->hasCsrf) {
             $this->postParameters[$this->csrfTokenKey] = $this->csrfToken;
         }
-        #$this->postParameters[$this->fileUploadFormField] = $file;
+        $this->postParameters[$this->fileUploadFormField] = $file;
     }
 
 }
