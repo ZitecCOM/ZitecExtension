@@ -471,6 +471,17 @@ class ZitecContext extends MinkContext implements MinkAwareContext
             }
         }
     }
+//
+//    /**
+//     * @AfterFeature
+//     */
+//    public function afterFormUpload($event)
+//    {
+//        if ($this->fileUploadHelper instanceof UploadHelper && $this->fileUploadHelper->getTestType() === "browser") {
+//            $file = fopen(UploadHelper::FILE_MONITOR, "w+");
+//            fclose($file);
+//        }
+//    }
 
     /**
      * @AfterStep
@@ -651,19 +662,19 @@ class ZitecContext extends MinkContext implements MinkAwareContext
         foreach ($tableNode->getTable() as $item => $value) {
             foreach ($value as $key => $successFailure) {
                 if ($key % 2 == 0) {
-                    if($successFailure === "success") {
-                        $successFound = $value[$key+1];
+                    if ($successFailure === "success") {
+                        $successFound = $value[$key + 1];
                     }
-                    if($successFailure === "failure") {
-                        $failFound = $value[$key+1];
+                    if ($successFailure === "failure") {
+                        $failFound = $value[$key + 1];
                     }
                 }
             }
         }
-        if(empty($successFound)) {
+        if (empty($successFound)) {
             throw new \Exception("No success text to validate the result of the form upload!");
         }
-        if(empty($failFound)) {
+        if (empty($failFound)) {
             throw new \Exception("No failure text to validate the result of the form upload!");
         }
         if (!$this->fileUploadHelper instanceof UploadHelper) {
@@ -671,17 +682,16 @@ class ZitecContext extends MinkContext implements MinkAwareContext
         }
         foreach ($this->fileUploadHelper->testFileUpload() as $testTypeAndExt => $result) {
             $breakDown = explode("_", $testTypeAndExt);
-            if(in_array($breakDown[0], $this->allowedFileUploadExtensions) && $breakDown[1] === "valid") {
-                if(strpos($result, $successFound) === false) {
-                    throw new \Exception("Success scenario for the following extension: '" . $breakDown[0] . "' has failed. Success text not found on resulting page");
+            if (in_array($breakDown[0], $this->allowedFileUploadExtensions) && $breakDown[1] === "valid") {
+                if (strpos($result, $successFound) === false) {
+                    throw new \Exception("Success scenario for the following extension-verification combo: '" . $breakDown[0] . "-" . $breakDown[1] . "' has failed. Success text not found on resulting page");
                 }
             } else {
-                if(strpos($result, $failFound) === false) {
-                    throw new \Exception("Failure scenario for the following extension: '" . $breakDown[0] . "' has failed. Failure text not found on resulting page");
+                if (strpos($result, $failFound) === false) {
+                    throw new \Exception("Failure scenario for the following extension: '" . $breakDown[0] . "-" . $breakDown[1] . "' has failed. Failure text not found on resulting page");
                 }
             }
         }
-
     }
 
     /**

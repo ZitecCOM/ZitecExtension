@@ -12,7 +12,7 @@ use Zitec\ZitecExtension\Session;
 class UploadHelper
 {
     const TEST_FILES_DIRECTORY = __DIR__ . DIRECTORY_SEPARATOR . 'Files';
-    const FILE_MONITOR = TEST_FILES_PATH . DIRECTORY_SEPARATOR . "used_test_files";
+    const FILE_MONITOR = TEST_FILES_PATH . DIRECTORY_SEPARATOR . "used_test_files.txt";
     private static $helper;
     private $verifications;
     private $testType;
@@ -55,6 +55,15 @@ class UploadHelper
     }
 
     /**
+     * Return the test type 
+     * @return string
+     */
+    public function getTestType()
+    {
+        return $this->testType;
+    }
+
+    /**
      * Indicated the existence of the CSRF validation on the form
      * @param bool $csrf
      */
@@ -80,6 +89,9 @@ class UploadHelper
     {
         $this->verifications = $verifications;
         $this->verifications[] = "valid";
+        if(empty($verifications)) {
+            $this->verifications[] = "mime";
+        }
     }
 
     /**
@@ -153,8 +165,9 @@ class UploadHelper
     }
 
     /**
-     * Test the file upload
+     * Test the file upload via POST methods or return a acceptable file path to attach to a field
      * @return array|string
+     * @throws \Exception
      */
     public function testFileUpload()
     {
@@ -175,9 +188,27 @@ class UploadHelper
                         }
                     }
                 }
-            break;
+                break;
             case 'browser':
-
+                foreach ($testFilesArray as $key => $value) {
+                    if (is_array($value)) {
+                        foreach ($value as $key1 => $testTypeDir) {
+                            if ((!empty($this->verifications) && in_array($key1, $this->verifications) && is_array($testTypeDir)) || (is_array($testTypeDir) && empty($this->verifications))) {
+                                foreach ($testTypeDir as $key2 => $file) {
+                                    $fullPathToFile = self::TEST_FILES_DIRECTORY . DIRECTORY_SEPARATOR . $key . DIRECTORY_SEPARATOR . $key1 . DIRECTORY_SEPARATOR . $file;
+                                    $usedFiles = file_get_contents(self::FILE_MONITOR);
+                                    if (strpos($usedFiles, $fullPathToFile) !== false) {
+                                        file_put_contents($usedFiles, $fullPathToFile);
+                                        return $fullPathToFile;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                break;
+            default:
+                throw new \Exception("Indicated test type $this->testType is not supported! 'POST' or 'browser' are the accepted values.");
         }
         return $result;
     }
