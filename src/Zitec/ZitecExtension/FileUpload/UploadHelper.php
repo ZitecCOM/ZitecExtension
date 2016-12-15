@@ -119,7 +119,7 @@ class UploadHelper
             $this->setFormEndpoint($endpoint);
         } else {
             if ($endpoint !== null) {
-                $this->setFormEndpoint($endpoint . $this->formEndpoint, '&items=1');
+                $this->setFormEndpoint($endpoint . $this->formEndpoint);
             }
         }
         $this->postParameters = $params;
