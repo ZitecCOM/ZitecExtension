@@ -225,7 +225,7 @@ class UploadHelper
                                 foreach ($testTypeDir as $key2 => $file) {
                                     $this->lastUploadedFileName[$key . "_" . $key1] = $file;
                                     $fullPathToFile = self::TEST_FILES_DIRECTORY . DIRECTORY_SEPARATOR . $key . DIRECTORY_SEPARATOR . $key1 . DIRECTORY_SEPARATOR . $file;
-                                    $this->updatePostParams($file);
+                                    $this->updatePostParams();
                                     $result[$key . "_" . $key1] = $this->makePost(null, null, array($this->fileUploadFormField => $fullPathToFile));
                                 }
                             }
@@ -278,10 +278,9 @@ class UploadHelper
     }
 
     /**
-     * Update the POST parameters
-     * @param string $file Filename for the test file
+     * Update the POST parameters with the CSRF token
      */
-    protected function updatePostParams($file)
+    protected function updatePostParams()
     {
         if ($this->hasCsrf) {
             $this->postParameters[$this->csrfTokenKey] = $this->csrfToken;
