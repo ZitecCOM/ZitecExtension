@@ -11,6 +11,7 @@ use Zitec\ZitecExtension\Session;
 
 class UploadHelper
 {
+    //todo check CSRF token reacquire after first POST
     const TEST_FILES_DIRECTORY = __DIR__ . DIRECTORY_SEPARATOR . 'Files';
     const FILE_MONITOR = TEST_FILES_PATH . DIRECTORY_SEPARATOR . "used_test_files.txt";
     private static $helper;
@@ -20,8 +21,9 @@ class UploadHelper
     private $csrfTokenKey;
     private $csrfToken;
     private $postParameters;
-    private $formEndpoint;
+    private $formEndpoint = null;
     private $fileUploadFormField;
+    private $lastUploadedFileName;
     /**
      * @var Session\Session $session
      */
@@ -55,7 +57,7 @@ class UploadHelper
     }
 
     /**
-     * Return the test type 
+     * Return the test type
      * @return string
      */
     public function getTestType()
@@ -89,7 +91,7 @@ class UploadHelper
     {
         $this->verifications = $verifications;
         $this->verifications[] = "valid";
-        if(empty($verifications)) {
+        if (empty($verifications)) {
             $this->verifications[] = "mime";
         }
     }
@@ -110,10 +112,16 @@ class UploadHelper
      * @param string $fileUploadField Name of the form upload field
      * @param array $params Other required form params for the POST request
      */
-    public function setSessionAndPostParams($session, $endpoint, $fileUploadField, $params = null)
+    public function setSessionAndPostParams($session, $endpoint = null, $fileUploadField, $params = null)
     {
         $this->session = $session;
-        $this->setFormEndpoint($endpoint);
+        if ($endpoint !== null && !$this->hasFormEndpoint()) {
+            $this->setFormEndpoint($endpoint);
+        } else {
+            if ($endpoint !== null) {
+                $this->setFormEndpoint($endpoint . $this->formEndpoint, '&items=1');
+            }
+        }
         $this->postParameters = $params;
         $this->fileUploadFormField = $fileUploadField;
     }
@@ -125,6 +133,41 @@ class UploadHelper
     public function setFormEndpoint($endpoint)
     {
         $this->formEndpoint = $endpoint;
+    }
+
+    /**
+     * Verifies if there is a form endpoint set
+     * @return bool
+     */
+    public function hasFormEndpoint()
+    {
+        return (bool)$this->formEndpoint;
+    }
+
+    /**
+     * Returns the name of the last file uploaded
+     * 
+     * @return string
+     */
+    public function getLastUploadedFileName()
+    {
+        return end($this->lastUploadedFileName);
+    }
+
+    /**
+     * Return the file name of a file used in a specific test
+     * 
+     * @param string $testId
+     * @return string
+     * @throws \Exception
+     */
+    public function getUploadedFileNameForTest($testId) {
+        if(array_key_exists($testId, $this->lastUploadedFileName)) {
+            return $this->lastUploadedFileName[$testId];
+        } else {
+            throw new \Exception("File name not found! Invalid test indicated!");
+        }
+
     }
 
     /**
@@ -180,6 +223,7 @@ class UploadHelper
                         foreach ($value as $key1 => $testTypeDir) {
                             if ((!empty($this->verifications) && in_array($key1, $this->verifications) && is_array($testTypeDir)) || (is_array($testTypeDir) && empty($this->verifications))) {
                                 foreach ($testTypeDir as $key2 => $file) {
+                                    $this->lastUploadedFileName[$key . "_" . $key1] = $file;
                                     $fullPathToFile = self::TEST_FILES_DIRECTORY . DIRECTORY_SEPARATOR . $key . DIRECTORY_SEPARATOR . $key1 . DIRECTORY_SEPARATOR . $file;
                                     $this->updatePostParams($file);
                                     $result[$key . "_" . $key1] = $this->makePost(null, null, array($fullPathToFile));
@@ -196,6 +240,7 @@ class UploadHelper
                             if ((!empty($this->verifications) && in_array($key1, $this->verifications) && is_array($testTypeDir)) || (is_array($testTypeDir) && empty($this->verifications))) {
                                 foreach ($testTypeDir as $key2 => $file) {
                                     $fullPathToFile = self::TEST_FILES_DIRECTORY . DIRECTORY_SEPARATOR . $key . DIRECTORY_SEPARATOR . $key1 . DIRECTORY_SEPARATOR . $file;
+                                    $this->lastUploadedFileName[$key . "_" . $key1] = $file;
                                     $usedFiles = file_get_contents(self::FILE_MONITOR);
                                     if (strpos($usedFiles, $fullPathToFile) !== false) {
                                         file_put_contents($usedFiles, $fullPathToFile);

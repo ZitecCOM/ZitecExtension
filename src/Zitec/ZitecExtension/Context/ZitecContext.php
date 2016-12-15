@@ -598,11 +598,14 @@ class ZitecContext extends MinkContext implements MinkAwareContext
                 }
             }
         }
+        if (!$this->fileUploadHelper instanceof UploadHelper) {
+            $this->fileUploadHelper = UploadHelper::getInstance();
+        }
         if ($foundFileUploadField == false) {
             throw new \Exception("file_upload_field is a required parameter! Please revise the test data!");
         }
-        if (!$this->fileUploadHelper instanceof UploadHelper) {
-            $this->fileUploadHelper = UploadHelper::getInstance();
+        if ($foundEndPoint == false && !$this->fileUploadHelper->hasFormEndpoint()) {
+            throw new \Exception("endpoint is a required parameter! Please revise the test data!");
         }
         $this->fileUploadHelper->setSessionAndPostParams($session, $foundEndPoint, $foundFileUploadField, $postParams);
     }
@@ -632,7 +635,7 @@ class ZitecContext extends MinkContext implements MinkAwareContext
     }
 
     /**
-     * Login to a website through POST. You need to provide the name attribute and value of the credential field
+     * Make a POST request to an endpoint with a set of params. You need to provide the name attribute and value of the credential field
      * @Then /^(?:|I )make a POST request to "([^"]*)" with:$/
      */
     public function iMakeAPostRequestToWith($endPoint, TableNode $tableNode)
@@ -652,13 +655,18 @@ class ZitecContext extends MinkContext implements MinkAwareContext
     }
 
     /**
-     * Send in a table node "success" and "failure" texts which are taken from the resulting page after the upload to verify if the action had the expected result
+     * Send in the table node "success" and "failure" texts which are taken from the resulting page after the upload to verify if the action had the expected result
+     * Success placeholders: filename (to use file name as a success message)
+     * Failure placeholders: no_success (to verify the lack of the success message)
+     * 
      * @Then /^(?:|I )test the file upload for the given test parameters:$/
      */
     public function iTestTheFileUpload(TableNode $tableNode)
     {
         $successFound = null;
         $failFound = null;
+        $successPlaceholder = false;
+        $failurePlaceholder = false;
         foreach ($tableNode->getTable() as $item => $value) {
             foreach ($value as $key => $successFailure) {
                 if ($key % 2 == 0) {
@@ -681,15 +689,28 @@ class ZitecContext extends MinkContext implements MinkAwareContext
             throw new \Exception("File upload helper not setup! Please setup all the required parameters in order to test the file upload!");
         }
         foreach ($this->fileUploadHelper->testFileUpload() as $testTypeAndExt => $result) {
+            if ($successFound === 'filename' || $successPlaceholder === true) {
+                $successFound = $this->fileUploadHelper->getUploadedFileNameForTest($testTypeAndExt);
+                $successPlaceholder = true;
+            }
             $breakDown = explode("_", $testTypeAndExt);
             if (in_array($breakDown[0], $this->allowedFileUploadExtensions) && $breakDown[1] === "valid") {
                 if (strpos($result, $successFound) === false) {
-                    throw new \Exception("Success scenario for the following extension-verification combo: '" . $breakDown[0] . "-" . $breakDown[1] . "' has failed. Success text not found on resulting page");
+                    throw new \Exception("Success scenario for the following extension-verification combo: '" . $breakDown[0] . "-" . $breakDown[1] . "' has failed. Success text $successFound not found on resulting page");
                 }
             } else {
-                if (strpos($result, $failFound) === false) {
-                    throw new \Exception("Failure scenario for the following extension: '" . $breakDown[0] . "-" . $breakDown[1] . "' has failed. Failure text not found on resulting page");
+                if ($failFound === 'no_success' || $failurePlaceholder === true) {
+                    $failFound = $successFound;
+                    $failurePlaceholder = true;
+                    if (strpos($result, $failFound) !== false) {
+                        throw new \Exception("Failure scenario for the following extension: '" . $breakDown[0] . "-" . $breakDown[1] . "' has failed. Success text $successFound identified on the page!");
+                    }
+                } else {
+                    if (strpos($result, $failFound) === false) {
+                        throw new \Exception("Failure scenario for the following extension: '" . $breakDown[0] . "-" . $breakDown[1] . "' has failed. Failure text $failFound not found on resulting page");
+                    }
                 }
+
             }
         }
     }
