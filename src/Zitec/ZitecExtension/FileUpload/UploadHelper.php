@@ -226,7 +226,7 @@ class UploadHelper
                                     $this->lastUploadedFileName[$key . "_" . $key1] = $file;
                                     $fullPathToFile = self::TEST_FILES_DIRECTORY . DIRECTORY_SEPARATOR . $key . DIRECTORY_SEPARATOR . $key1 . DIRECTORY_SEPARATOR . $file;
                                     $this->updatePostParams($file);
-                                    $result[$key . "_" . $key1] = $this->makePost(null, null, array($fullPathToFile));
+                                    $result[$key . "_" . $key1] = $this->makePost(null, null, array($this->fileUploadFormField => $fullPathToFile));
                                 }
                             }
                         }
@@ -286,7 +286,6 @@ class UploadHelper
         if ($this->hasCsrf) {
             $this->postParameters[$this->csrfTokenKey] = $this->csrfToken;
         }
-        $this->postParameters[$this->fileUploadFormField] = $file;
     }
 
 }
