@@ -30,5 +30,10 @@
         "psr-0": {
             "Zitec\\ZitecExtension": "src/"
         }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "0.0.x-dev"
+        }
     }
 }
