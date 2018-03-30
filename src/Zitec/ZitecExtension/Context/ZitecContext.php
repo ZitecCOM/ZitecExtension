@@ -12,7 +12,11 @@ use Zitec\ZitecExtension\Session\Session;
 use Behat\Behat\Hook\Scope\AfterStepScope;
 use Behat\Behat\Hook\Call\AfterStep;
 
-
+/**
+ * Class ZitecContext
+ *
+ * @copyright Copyright (c) Zitec COM
+ */
 class ZitecContext extends MinkContext implements MinkAwareContext
 {
 
@@ -54,11 +58,7 @@ class ZitecContext extends MinkContext implements MinkAwareContext
   }
 
   /**
-<<<<<<< HEAD
-   * Mouse over elemenet with specified css.
-=======
    * Mouse over element with specified css.
->>>>>>> Change functions that select random options.
    *
    * @When /^(?:|I )put the mouse over "(?P<element>(?:[^"]|\\")*)"$/
    */
@@ -361,15 +361,6 @@ class ZitecContext extends MinkContext implements MinkAwareContext
     return;
   }
 
-  /** @BeforeScenario */
-  public function before($event)
-  {
-    // check if window size was defined in the config file
-    if (property_exists($this, 'size')) {
-      $this->size !== false ? $this->setWindowSize($this->size) : false;
-    }
-  }
-
   /**
    * @AfterStep
    */
@@ -458,24 +449,6 @@ class ZitecContext extends MinkContext implements MinkAwareContext
       );
     }
     return false;
-  }
-
-  /**
-   * set the window size
-   *
-   * $param string width x height
-   * */
-  protected function setWindowSize($size)
-  {
-    //maximize window only if is a Selenium2Driver instance
-    if (($this->getSession()->getDriver() instanceof \Behat\Mink\Driver\Selenium2Driver)) {
-      if ($size == 'maximized') {
-        $this->getSession()->getDriver()->maximizeWindow();
-      } else {
-        $dim = explode('x', $size);
-        $this->getSession()->resizeWindow(intval($dim[0]), intval($dim[1]));
-      }
-    }
   }
 
 }
