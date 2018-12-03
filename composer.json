@@ -20,7 +20,7 @@
         "behat/mink-goutte-driver": "^1.2.1",
         "behat/mink-selenium2-driver": "v1.3.1",
         "ciaranmcnulty/behat-stepthroughextension": "1.0.0",
-        "sensiolabs/behat-page-object-extension": "v2.0.1",
+        "sensiolabs/behat-page-object-extension": "^v2.1.0",
         "fzaninotto/faker": "^1.6.0"
     },
     "config": {
